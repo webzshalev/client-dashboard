@@ -63,12 +63,18 @@
         <thead>
           <tr>
             <th class="num-th">#</th>
-            <th>שם מלא</th>
+            <th class="sortable" :class="{ active: sortBy === 'full_name' }" @click="handleSort('full_name')">
+              שם מלא <span class="sort-icon">{{ sortIcon('full_name') }}</span>
+            </th>
             <th>טלפון</th>
-            <th>פלטפורמה</th>
+            <th class="sortable" :class="{ active: sortBy === 'platform' }" @click="handleSort('platform')">
+              פלטפורמה <span class="sort-icon">{{ sortIcon('platform') }}</span>
+            </th>
             <th>מקור</th>
             <th>פרויקט</th>
-            <th>תאריך</th>
+            <th class="sortable" :class="{ active: sortBy === 'lead_date' }" @click="handleSort('lead_date')">
+              תאריך <span class="sort-icon">{{ sortIcon('lead_date') }}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -140,9 +146,11 @@ const props = defineProps({
   search: { type: String, default: '' },
   filterPlatform: { type: String, default: '' },
   stats: { type: Object, default: null },
+  sortBy: { type: String, default: 'lead_date' },
+  sortDir: { type: String, default: 'DESC' },
 })
 
-const emit = defineEmits(['update:search', 'update:filterPlatform', 'update:page'])
+const emit = defineEmits(['update:search', 'update:filterPlatform', 'update:page', 'update:sortBy', 'update:sortDir'])
 
 const searchInput = ref(props.search)
 const localPlatform = ref(props.filterPlatform)
@@ -166,6 +174,20 @@ function fmtDateTime(d) { return formatDateTime(d) }
 function platformStyle(platform) {
   const color = getPlatformColor(platform)
   return { background: color + '1A', color, border: `1px solid ${color}33` }
+}
+
+function handleSort(col) {
+  if (props.sortBy === col) {
+    emit('update:sortDir', props.sortDir === 'DESC' ? 'ASC' : 'DESC')
+  } else {
+    emit('update:sortBy', col)
+    emit('update:sortDir', 'DESC')
+  }
+}
+
+function sortIcon(col) {
+  if (props.sortBy !== col) return '↕'
+  return props.sortDir === 'DESC' ? '↓' : '↑'
 }
 
 function truncate(str, max) {
@@ -341,6 +363,20 @@ function truncate(str, max) {
   text-align: right;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
+}
+
+.data-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+.data-table th.sortable:hover { color: var(--text-muted); }
+.data-table th.sortable.active { color: var(--gold); }
+
+.sort-icon {
+  font-size: 9px;
+  margin-right: 3px;
+  opacity: 0.7;
 }
 
 .data-table td {

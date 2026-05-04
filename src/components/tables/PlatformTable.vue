@@ -19,7 +19,13 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="p in sorted" :key="p.name">
+        <tr
+          v-for="p in sorted"
+          :key="p.name"
+          class="clickable-row"
+          :class="{ 'row-active': activeFilter === p.name }"
+          @click="toggleFilter(p.name)"
+        >
           <td>
             <div class="platform-cell">
               <span class="platform-dot" :style="{ background: getColor(p.name) }"></span>
@@ -53,7 +59,14 @@ import { getPlatformColor, getPlatformLabel, formatNumber, formatDate } from '..
 
 const props = defineProps({
   platforms: { type: Array, default: () => [] },
+  activeFilter: { type: String, default: '' },
 })
+
+const emit = defineEmits(['filterBy'])
+
+function toggleFilter(name) {
+  emit('filterBy', props.activeFilter === name ? '' : name)
+}
 
 const sorted = computed(() =>
   [...props.platforms].sort((a, b) => b.lead_count - a.lead_count)
@@ -188,5 +201,23 @@ function fmtDate(d) { return formatDate(d) }
   padding: 40px 0;
   text-align: center;
   font-size: 14px;
+}
+
+.clickable-row {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.clickable-row:hover td {
+  background: var(--surface-2);
+}
+
+.row-active td {
+  background: rgba(212, 175, 55, 0.07);
+}
+
+.row-active .platform-name {
+  color: var(--gold);
+  font-weight: 700;
 }
 </style>

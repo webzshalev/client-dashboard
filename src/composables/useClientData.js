@@ -15,6 +15,8 @@ export function useClientData(clientId, from, to, activeProject, adminOptions) {
   const perPage = ref(50)
   const search = ref('')
   const filterPlatform = ref('')
+  const sortBy = ref('lead_date')
+  const sortDir = ref('DESC')
 
   // Status param: 'sent' by default, '' (all) when admin shows extras
   const statusParam = computed(() => {
@@ -49,8 +51,8 @@ export function useClientData(clientId, from, to, activeProject, adminOptions) {
         date_to: to.value,
         page: page.value,
         per_page: perPage.value,
-        sort: 'lead_date',
-        dir: 'DESC',
+        sort: sortBy.value,
+        dir: sortDir.value,
       }
       if (search.value) params.search = search.value
       if (filterPlatform.value) params.platform = filterPlatform.value
@@ -193,6 +195,8 @@ export function useClientData(clientId, from, to, activeProject, adminOptions) {
     page.value = 1
     search.value = ''
     filterPlatform.value = ''
+    sortBy.value = 'lead_date'
+    sortDir.value = 'DESC'
     await Promise.all([fetchLeads(), fetchProjects(), fetchClientName()])
     fetchAllLeadsForChart()
   }
@@ -213,6 +217,13 @@ export function useClientData(clientId, from, to, activeProject, adminOptions) {
 
   // When status or project filter changes → refetch data
   watch([statusParam, _proj], () => { if (clientId.value && clientId.value !== '0') refreshData() })
+
+  // When sort changes → reset to page 1, refetch
+  watch([sortBy, sortDir], () => {
+    if (!clientId.value || clientId.value === '0') return
+    page.value = 1
+    fetchLeads()
+  })
 
   // When search or platform filter changes → reset to page 1, refetch
   watch([search, filterPlatform], () => {
@@ -238,7 +249,7 @@ export function useClientData(clientId, from, to, activeProject, adminOptions) {
     leadsResponse, stats, client, pagination, leads,
     platforms, sources, projects, projectNames,
     allLeads, dailyChart,
-    page, perPage, search, filterPlatform,
+    page, perPage, search, filterPlatform, sortBy, sortDir,
     refresh, fetchLeads,
   }
 }

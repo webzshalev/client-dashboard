@@ -44,7 +44,11 @@
           <DailyLeadsChart :dailyData="dailyChart" :loadingAll="loadingAll" />
 
           <div v-if="platforms.length || sources.length" class="two-col">
-            <PlatformTable :platforms="platforms" />
+            <PlatformTable
+              :platforms="platforms"
+              :activeFilter="filterPlatform"
+              @filterBy="(name) => { filterPlatform.value = name }"
+            />
             <SourceTable :sources="sources" />
           </div>
 
@@ -56,14 +60,18 @@
             :perPage="perPage"
             :search="search"
             :filterPlatform="filterPlatform"
+            :sortBy="sortBy"
+            :sortDir="sortDir"
             :stats="stats"
             @update:page="(v) => { page.value = v }"
             @update:search="(v) => { search.value = v }"
             @update:filterPlatform="(v) => { filterPlatform.value = v }"
+            @update:sortBy="(v) => { sortBy.value = v }"
+            @update:sortDir="(v) => { sortDir.value = v }"
           />
 
-          <div v-if="projects.length">
-            <ProjectsGrid :projects="projects" />
+          <div v-if="projectsWithBudget.length">
+            <ProjectsGrid :projects="projectsWithBudget" />
           </div>
 
           <div class="footer-note">
@@ -136,7 +144,7 @@ const {
   leadsResponse, stats, client, pagination, leads,
   platforms, sources, projects, projectNames,
   dailyChart,
-  page, perPage, search, filterPlatform,
+  page, perPage, search, filterPlatform, sortBy, sortDir,
   refresh,
 } = useClientData(clientId, from, to, activeProject, adminOptions)
 
@@ -148,8 +156,10 @@ const tabs = computed(() => [
 // ── Budget ─────────────────────────────────────────────────────────────────
 const activeBudget = ref({ monthly_budget: 0, actual_spend: 0, leads_override: 0 })
 const platformBudgets = ref([]) // [{name, monthly_budget, actual_spend}]
+const budgetVersion = ref(0) // incremented on every reloadBudget to invalidate computed
 
 function reloadBudget() {
+  budgetVersion.value++
   const saved = loadPlatformBudgets(activeProject.value)
 
   // Build platform budget map: start from API project data
@@ -194,6 +204,29 @@ function reloadBudget() {
 watch([activeProject, clientId], reloadBudget, { immediate: true })
 // Reload when API project data arrives (to populate API defaults)
 watch(projects, reloadBudget)
+
+// ── Projects with admin budget overrides applied ────────────────────────────
+const projectsWithBudget = computed(() => {
+  void budgetVersion.value // reactive dependency so this re-runs after reloadBudget
+  return projects.value.map((proj) => {
+    const saved = loadPlatformBudgets(proj.name)
+    const platforms = proj.platforms.map((plat) => {
+      const key = (plat.name || 'unknown').toLowerCase()
+      const sv = saved[key]
+      const monthly_budget = sv?.monthly_budget > 0 ? Number(sv.monthly_budget) : plat.monthly_budget
+      const updated_budget = sv?.monthly_budget > 0 ? Number(sv.monthly_budget) : plat.updated_budget
+      const budget_usage  = sv?.actual_spend  > 0 ? Number(sv.actual_spend)  : plat.budget_usage
+      return { ...plat, monthly_budget, updated_budget, budget_usage }
+    })
+    const total = platforms.reduce(
+      (acc, p) => { acc.monthly_budget += p.monthly_budget; acc.updated_budget += p.updated_budget; acc.budget_usage += p.budget_usage; return acc },
+      { monthly_budget: 0, updated_budget: 0, budget_usage: 0 }
+    )
+    const effective = total.updated_budget > 0 ? total.updated_budget : total.monthly_budget
+    total.usage_percent = effective > 0 ? Math.round((total.budget_usage / effective) * 10000) / 100 : 0
+    return { ...proj, platforms, total_budget: total }
+  })
+})
 
 // ── Period label for CPL cards ─────────────────────────────────────────────
 const periodLabel = computed(() => {

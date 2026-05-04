@@ -34,7 +34,7 @@
             class="platform-tag"
             :style="platformStyle(p.name)"
           >
-            {{ p.name }}
+            {{ getPlatformLabel(p.name) }}
           </span>
         </div>
 
@@ -73,7 +73,7 @@
             class="platform-row"
           >
             <div class="plat-dot" :style="{ background: getPlatformColor(p.name) }"></div>
-            <span class="plat-name">{{ p.name }}</span>
+            <span class="plat-name">{{ getPlatformLabel(p.name) }}</span>
             <span class="plat-budget">{{ fmtCurrency(p.updated_budget || p.monthly_budget) }}</span>
             <span class="plat-usage" :style="{ color: getPlatformColor(p.name) }">
               {{ fmtCurrency(p.budget_usage) }}
@@ -86,7 +86,7 @@
 </template>
 
 <script setup>
-import { getPlatformColor, formatNumber, formatCurrency } from '../../lib/constants.js'
+import { getPlatformColor, getPlatformLabel, formatNumber, formatCurrency } from '../../lib/constants.js'
 
 const props = defineProps({
   projects: { type: Array, default: () => [] },

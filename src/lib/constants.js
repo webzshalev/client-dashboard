@@ -1,3 +1,10 @@
+// Leads from the "value" platform are counted toward the "key" platform's CPL.
+// Rationale: website leads from Google Ads landing pages are stored as platform='website'
+// but should be attributed to the Google budget for CPL purposes.
+export const CPL_PLATFORM_MERGE = {
+  google: 'website',
+}
+
 export const PLATFORM_COLORS = {
   facebook: '#1877F2',
   instagram: '#E1306C',

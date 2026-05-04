@@ -42,19 +42,19 @@
           </span>
           <div class="card-icon" style="color: var(--gold)"><IconCoin /></div>
         </div>
-        <div v-if="card.cpl != null" class="card-value font-display" style="color: var(--gold)">
-          ₪{{ Math.round(card.cpl).toLocaleString('he-IL') }}
+        <div
+          class="card-value font-display"
+          :style="card.cpl != null ? { color: 'var(--gold)' } : { color: 'var(--text-dim)', fontSize: '36px', marginBottom: '20px' }"
+        >
+          {{ card.cpl != null ? '₪' + Math.round(card.cpl).toLocaleString('he-IL') : '—' }}
         </div>
-        <div v-else class="cpl-hint">
-          {{ card.actual_spend > 0 ? 'אין לידים לחישוב' : 'הגדר בפאנל מנהל' }}
-        </div>
-        <div v-if="card.cpl != null" class="card-sub">
-          <span class="sub-dot" style="background: var(--gold)"></span>
-          {{ fmtCurrency(card.actual_spend) }} / {{ fmt(card.leads) }} לידים
+        <div class="card-sub">
+          <template v-if="card.cpl != null">
+            <span class="sub-dot" style="background: var(--gold)"></span>
+            {{ fmtCurrency(card.actual_spend) }} / {{ fmt(card.leads) }} לידים
+            <span v-if="card.mergedChildLabel" class="merge-note">(כולל {{ card.mergedChildLabel }})</span>
+          </template>
           <span v-if="periodLabel" class="period-tag">{{ periodLabel }}</span>
-        </div>
-        <div v-else-if="periodLabel" class="card-sub">
-          <span class="period-tag">{{ periodLabel }}</span>
         </div>
       </div>
     </template>
@@ -66,15 +66,17 @@
           <span class="card-label">עלות לליד</span>
           <div class="card-icon" style="color: var(--gold)"><IconCoin /></div>
         </div>
-        <div v-if="globalCpl != null" class="card-value font-display" style="color: var(--gold)">
-          ₪{{ Math.round(globalCpl).toLocaleString('he-IL') }}
+        <div
+          class="card-value font-display"
+          :style="globalCpl != null ? { color: 'var(--gold)' } : { color: 'var(--text-dim)', fontSize: '36px', marginBottom: '20px' }"
+        >
+          {{ globalCpl != null ? '₪' + Math.round(globalCpl).toLocaleString('he-IL') : '—' }}
         </div>
-        <div v-else class="cpl-hint">
-          {{ hasBudget ? 'אין לידים לחישוב' : 'הגדר בפאנל מנהל' }}
-        </div>
-        <div v-if="globalCpl != null" class="card-sub">
-          <span class="sub-dot" style="background: var(--gold)"></span>
-          {{ fmtCurrency(budget?.actual_spend || 0) }} / {{ fmt(leadsForCpl) }} לידים
+        <div class="card-sub">
+          <template v-if="globalCpl != null">
+            <span class="sub-dot" style="background: var(--gold)"></span>
+            {{ fmtCurrency(budget?.actual_spend || 0) }} / {{ fmt(leadsForCpl) }} לידים
+          </template>
           <span v-if="periodLabel" class="period-tag">{{ periodLabel }}</span>
         </div>
       </div>
@@ -135,7 +137,7 @@
 
 <script setup>
 import { computed, h } from 'vue'
-import { formatNumber, getPlatformLabel } from '../../lib/constants.js'
+import { formatNumber, getPlatformLabel, CPL_PLATFORM_MERGE } from '../../lib/constants.js'
 
 const props = defineProps({
   stats: { type: Object, default: null },
@@ -160,14 +162,29 @@ const topPlatformLabel = computed(() => topEntry.value ? getPlatformLabel(topEnt
 const topPlatformSub = computed(() => topEntry.value ? `${fmt(topEntry.value[1])} לידים` : 'אין נתונים')
 
 // ── Per-platform CPL cards ─────────────────────────────────────────────────
+// Build reverse map: which platform's leads are consumed by another (e.g., 'website' → 'google')
+const MERGED_INTO = Object.fromEntries(
+  Object.entries(CPL_PLATFORM_MERGE).map(([parent, child]) => [child, parent])
+)
+
 const cplCards = computed(() => {
   if (!props.platformBudgets.length) return []
   const byPlatform = props.stats?.by_platform || {}
+  const budgetNames = new Set(props.platformBudgets.filter(p => p.monthly_budget > 0 || p.actual_spend > 0).map(p => p.name))
 
   return props.platformBudgets
-    .filter(p => (p.monthly_budget > 0 || p.actual_spend > 0))
+    .filter(p => {
+      if (!(p.monthly_budget > 0 || p.actual_spend > 0)) return false
+      // Hide child platforms whose leads are merged into a parent that has budget
+      const parent = MERGED_INTO[p.name]
+      if (parent && budgetNames.has(parent)) return false
+      return true
+    })
     .map(p => {
-      const leads = Number(byPlatform[p.name] || 0)
+      const mergedChild = CPL_PLATFORM_MERGE[p.name]
+      const ownLeads = Number(byPlatform[p.name] || 0)
+      const childLeads = mergedChild ? Number(byPlatform[mergedChild] || 0) : 0
+      const leads = ownLeads + childLeads
       const cpl = p.actual_spend > 0 && leads > 0 ? p.actual_spend / leads : null
       return {
         name: p.name,
@@ -175,6 +192,9 @@ const cplCards = computed(() => {
         monthly_budget: p.monthly_budget,
         actual_spend: p.actual_spend,
         leads,
+        ownLeads,
+        childLeads,
+        mergedChildLabel: childLeads > 0 ? getPlatformLabel(mergedChild) : null,
         cpl,
       }
     })
@@ -342,6 +362,11 @@ function IconReceipt() {
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.merge-note {
+  font-size: 10px;
+  color: var(--text-dim);
 }
 
 .period-tag {
