@@ -2,7 +2,17 @@
   "permissions": {
     "allow": [
       "Bash(npm run *)",
-      "Bash(curl -s http://localhost:5177)"
+      "Bash(curl -s http://localhost:5177)",
+      "Bash(npm install *)",
+      "Bash(Start-Sleep -Seconds 2)",
+      "Bash(curl http://localhost:3001/api/health)",
+      "Bash(npx --yes kill-port 3001)",
+      "Bash(node src/index.js)",
+      "Bash(curl -s http://localhost:3001/api/monitor/client/5/leads)",
+      "Bash(curl -s -H \"Authorization: Bearer webz-dashboard-2026\" \"https://api.truecontrol.co.il/api/public/client/5/leads?per_page=1\")",
+      "Bash(curl -s -H \"X-API-Key: Shalev137@\" \"https://api.truecontrol.co.il/api/public/client/5/leads?per_page=1\")",
+      "Bash(curl -s \"http://localhost:3001/api/monitor/client/5/leads?per_page=1\")",
+      "Bash(curl -s -X POST \"https://api.truecontrol.co.il/api/auth/login\" -H \"Content-Type: application/json\" -d '{\"username\":\"shalevsaban\",\"password\":\"Shalev137@\"}')"
     ]
   }
 }
