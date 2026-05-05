@@ -2,13 +2,31 @@ import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 function toISODate(d) {
-  return d.toISOString().substring(0, 10)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
-function daysAgo(n) {
+function startOfThisWeek() {
   const d = new Date()
-  d.setDate(d.getDate() - n)
+  d.setDate(d.getDate() - d.getDay()) // back to Sunday
   return d
+}
+
+function startOfThisMonth() {
+  const d = new Date()
+  return new Date(d.getFullYear(), d.getMonth(), 1)
+}
+
+function startOfLastMonth() {
+  const d = new Date()
+  return new Date(d.getFullYear(), d.getMonth() - 1, 1)
+}
+
+function endOfLastMonth() {
+  const d = new Date()
+  return new Date(d.getFullYear(), d.getMonth(), 0)
 }
 
 export function useDateRange() {
@@ -16,46 +34,31 @@ export function useDateRange() {
   const router = useRouter()
 
   const today = toISODate(new Date())
-  const defaultFrom = toISODate(daysAgo(30))
+  const defaultFrom = toISODate(startOfThisMonth())
 
   const from = ref(route.query.from || defaultFrom)
   const to = ref(route.query.to || today)
 
   const presets = [
     {
-      label: 'היום',
+      label: 'השבוע',
       apply() {
-        from.value = today
+        from.value = toISODate(startOfThisWeek())
         to.value = today
       },
     },
     {
-      label: 'שבוע אחרון',
+      label: 'החודש',
       apply() {
-        from.value = toISODate(daysAgo(7))
+        from.value = toISODate(startOfThisMonth())
         to.value = today
       },
     },
     {
-      label: 'חודש אחרון',
+      label: 'חודש קודם',
       apply() {
-        from.value = toISODate(daysAgo(30))
-        to.value = today
-      },
-    },
-    {
-      label: '3 חודשים',
-      apply() {
-        from.value = toISODate(daysAgo(90))
-        to.value = today
-      },
-    },
-    {
-      label: 'השנה',
-      apply() {
-        const y = new Date().getFullYear()
-        from.value = `${y}-01-01`
-        to.value = today
+        from.value = toISODate(startOfLastMonth())
+        to.value = toISODate(endOfLastMonth())
       },
     },
   ]
@@ -64,13 +67,10 @@ export function useDateRange() {
     const f = from.value
     const t = to.value
     const todayStr = toISODate(new Date())
-    const y = new Date().getFullYear()
     const checks = [
-      { label: 'היום',        from: todayStr,                   to: todayStr },
-      { label: 'שבוע אחרון',  from: toISODate(daysAgo(7)),      to: todayStr },
-      { label: 'חודש אחרון',  from: toISODate(daysAgo(30)),     to: todayStr },
-      { label: '3 חודשים',   from: toISODate(daysAgo(90)),     to: todayStr },
-      { label: 'השנה',        from: `${y}-01-01`,               to: todayStr },
+      { label: 'השבוע',      from: toISODate(startOfThisWeek()),  to: todayStr },
+      { label: 'החודש',      from: toISODate(startOfThisMonth()), to: todayStr },
+      { label: 'חודש קודם', from: toISODate(startOfLastMonth()), to: toISODate(endOfLastMonth()) },
     ]
     return checks.find((c) => c.from === f && c.to === t)?.label || null
   })

@@ -56,18 +56,6 @@
             :leads="leads"
             :pagination="pagination"
             :loading="loading"
-            :page="page"
-            :perPage="perPage"
-            :search="search"
-            :filterPlatform="filterPlatform"
-            :sortBy="sortBy"
-            :sortDir="sortDir"
-            :stats="stats"
-            @update:page="(v) => { page.value = v }"
-            @update:search="(v) => { search.value = v }"
-            @update:filterPlatform="(v) => { filterPlatform.value = v }"
-            @update:sortBy="(v) => { sortBy.value = v }"
-            @update:sortDir="(v) => { sortDir.value = v }"
           />
 
           <div v-if="projectsWithBudget.length">
@@ -144,7 +132,7 @@ const {
   leadsResponse, stats, client, pagination, leads,
   platforms, sources, projects, projectNames,
   dailyChart,
-  page, perPage, search, filterPlatform, sortBy, sortDir,
+  filterPlatform,
   refresh,
 } = useClientData(clientId, from, to, activeProject, adminOptions)
 
@@ -158,9 +146,15 @@ const activeBudget = ref({ monthly_budget: 0, actual_spend: 0, leads_override: 0
 const platformBudgets = ref([]) // [{name, monthly_budget, actual_spend}]
 const budgetVersion = ref(0) // incremented on every reloadBudget to invalidate computed
 
+function activeBudgetMonth() {
+  const d = new Date((from.value || new Date().toISOString().substring(0, 10)) + 'T00:00:00')
+  return { month: d.getMonth() + 1, year: d.getFullYear() }
+}
+
 function reloadBudget() {
   budgetVersion.value++
-  const saved = loadPlatformBudgets(activeProject.value)
+  const { month, year } = activeBudgetMonth()
+  const saved = loadPlatformBudgets(activeProject.value, month, year)
 
   // Build platform budget map: start from API project data
   const budgetMap = {}
@@ -187,7 +181,8 @@ function reloadBudget() {
   platformBudgets.value = Object.values(budgetMap).filter(p => p.monthly_budget > 0 || p.actual_spend > 0)
 
   // Global budget for utilization cards
-  const projectBudget = loadBudget(activeProject.value)
+  const budgetKey = `${activeProject.value}__${year}_${month}`
+  const projectBudget = loadBudget(budgetKey)
   const pList = platformBudgets.value
   if (pList.length > 0) {
     activeBudget.value = {
@@ -200,16 +195,17 @@ function reloadBudget() {
   }
 }
 
-// Reload when project/client changes or admin saves
-watch([activeProject, clientId], reloadBudget, { immediate: true })
+// Reload when project/client/date changes or admin saves
+watch([activeProject, clientId, from], reloadBudget, { immediate: true })
 // Reload when API project data arrives (to populate API defaults)
 watch(projects, reloadBudget)
 
 // ── Projects with admin budget overrides applied ────────────────────────────
 const projectsWithBudget = computed(() => {
   void budgetVersion.value // reactive dependency so this re-runs after reloadBudget
+  const { month, year } = activeBudgetMonth()
   return projects.value.map((proj) => {
-    const saved = loadPlatformBudgets(proj.name)
+    const saved = loadPlatformBudgets(proj.name, month, year)
     const platforms = proj.platforms.map((plat) => {
       const key = (plat.name || 'unknown').toLowerCase()
       const sv = saved[key]

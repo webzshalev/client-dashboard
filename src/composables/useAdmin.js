@@ -61,12 +61,12 @@ export function useAdmin(clientId) {
     budgetStorage.setProjectBudget(_clientId.value, project, data)
   }
 
-  function loadPlatformBudgets(project) {
-    return budgetStorage.getPlatformBudgets(_clientId.value, project)
+  function loadPlatformBudgets(project, month, year) {
+    return budgetStorage.getPlatformBudgets(_clientId.value, project, month, year)
   }
 
-  function savePlatformBudgets(project, data) {
-    budgetStorage.setPlatformBudgets(_clientId.value, project, data)
+  function savePlatformBudgets(project, data, month, year) {
+    budgetStorage.setPlatformBudgets(_clientId.value, project, data, month, year)
   }
 
   return {

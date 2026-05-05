@@ -93,6 +93,13 @@
             <div class="panel-section">
               <div class="section-heading">תקציב לפי פלטפורמה</div>
 
+              <div class="field-wrap">
+                <label class="field-label">חודש</label>
+                <select v-model="selectedMonthKey" class="field-select">
+                  <option v-for="m in monthOptions" :key="m.key" :value="m.key">{{ m.label }}</option>
+                </select>
+              </div>
+
               <div v-if="projectNames.length > 1" class="field-wrap">
                 <label class="field-label">פרויקט</label>
                 <select v-model="selectedProject" class="field-select">
@@ -216,6 +223,28 @@ const platformForm = ref({})
 const cplOverride = ref('')
 const savedMsg = ref(false)
 
+// Month selector — generate last 12 months + next month
+const monthOptions = computed(() => {
+  const opts = []
+  const now = new Date()
+  for (let i = -1; i <= 11; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const month = d.getMonth() + 1
+    const year = d.getFullYear()
+    const label = d.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })
+    opts.push({ key: `${year}-${month}`, month, year, label })
+  }
+  return opts
+})
+
+const now = new Date()
+const selectedMonthKey = ref(`${now.getFullYear()}-${now.getMonth() + 1}`)
+
+const selectedMonth = computed(() => {
+  const found = monthOptions.value.find(m => m.key === selectedMonthKey.value)
+  return found || monthOptions.value[0]
+})
+
 // Link generator
 const linkCopied = ref(false)
 const generatedLink = computed(() => {
@@ -225,11 +254,12 @@ const generatedLink = computed(() => {
 })
 
 watch(() => props.activeProject, (p) => { selectedProject.value = p || '' })
-watch([selectedProject, clientIdRef], () => { initPlatformForm(); loadCplOverride() })
+watch([selectedProject, selectedMonthKey, clientIdRef], () => { initPlatformForm(); loadCplOverride() })
 watch(() => props.platforms, initPlatformForm)
 
 function initPlatformForm() {
-  const saved = loadPlatformBudgets(selectedProject.value)
+  const { month, year } = selectedMonth.value
+  const saved = loadPlatformBudgets(selectedProject.value, month, year)
 
   // Collect API budget defaults: sum across matching projects
   const apiDefaults = {}
@@ -262,7 +292,9 @@ function initPlatformForm() {
 }
 
 function loadCplOverride() {
-  const data = loadBudget(selectedProject.value)
+  const { month, year } = selectedMonth.value
+  const key = `${selectedProject.value}__${year}_${month}`
+  const data = loadBudget(key)
   cplOverride.value = data.leads_override > 0 ? String(data.leads_override) : ''
 }
 
@@ -300,6 +332,7 @@ async function submitPin() {
 }
 
 function savePlatformForm() {
+  const { month, year } = selectedMonth.value
   const data = {}
   for (const [name, vals] of Object.entries(platformForm.value)) {
     data[name] = {
@@ -307,8 +340,9 @@ function savePlatformForm() {
       actual_spend: Number(vals.actual_spend) || 0,
     }
   }
-  savePlatformBudgets(selectedProject.value, data)
-  saveBudget(selectedProject.value, {
+  savePlatformBudgets(selectedProject.value, data, month, year)
+  const budgetKey = `${selectedProject.value}__${year}_${month}`
+  saveBudget(budgetKey, {
     monthly_budget: 0,
     actual_spend: 0,
     leads_override: Number(cplOverride.value) || 0,

@@ -21,7 +21,11 @@ function lsErase(key) {
 // ─── Key helpers ──────────────────────────────────────────────────────────────
 const k = {
   budget:          (cid, proj) => `${NS}_${cid}_${proj || '__all__'}_budget`,
-  platformBudgets: (cid, proj) => `${NS}_${cid}_${proj || '__all__'}_platform_budgets`,
+  platformBudgets: (cid, proj, month, year) => {
+    const m = month || (new Date().getMonth() + 1)
+    const y = year  || new Date().getFullYear()
+    return `${NS}_${cid}_${proj || '__all__'}_${y}_${m}_platform_budgets`
+  },
   session:         (cid)       => `${NS}_admin_ts_${cid}`,
   toggle:          (cid, name) => `${NS}_${cid}_${name}`,
 }
@@ -34,11 +38,11 @@ export const budgetStorage = {
   setProjectBudget(clientId, project, data) {
     lsWrite(k.budget(clientId, project), data)
   },
-  getPlatformBudgets(clientId, project) {
-    return lsRead(k.platformBudgets(clientId, project), {})
+  getPlatformBudgets(clientId, project, month, year) {
+    return lsRead(k.platformBudgets(clientId, project, month, year), {})
   },
-  setPlatformBudgets(clientId, project, data) {
-    lsWrite(k.platformBudgets(clientId, project), data)
+  setPlatformBudgets(clientId, project, data, month, year) {
+    lsWrite(k.platformBudgets(clientId, project, month, year), data)
   },
 }
 
